@@ -1,0 +1,106 @@
+---------------------------------------------------------
+Theory:
+Difference between system node pool and user node pool:
+For a system node pool, AKS automatically assigns the label kubernetes.azure.com/mode: system to its nodes. 
+This causes AKS to prefer scheduling system pods on node pools that contain this label. This label doesn't prevent you from scheduling application 
+pods on system node pools. However, we recommend you isolate critical system pods from your application pods to prevent misconfigured or rogue 
+application pods from accidentally killing system pods.
+
+You can enforce this behavior by creating a dedicated system node pool. 
+Use the CriticalAddonsOnly=true:NoSchedule taint to prevent application pods from being scheduled on system node pools.
+
+System node pools have the following restrictions:
+
+-System node pools must support at least 30 pods as described by the minimum and maximum value formula for pods.
+-System pools osType must be Linux.
+-User node pools osType may be Linux or Windows.
+-System pools must contain at least one node, and user node pools may contain zero or more nodes.
+-System node pools require a VM SKU of at least 2 vCPUs and 4 GB memory. But burstable-VM(B series) isn't recommended.
+-A minimum of two nodes 4 vCPUs is recommended (for example, Standard_DS4_v2), especially for large clusters (Multiple CoreDNS Pod replicas, 3-4+ add-ons, etc.).
+-Spot node pools require user node pools.
+- Adding another system node pool or changing which node pool is a system node pool does not automatically move system pods. 
+System pods can continue to run on the same node pool, even if you change it to a user node pool. If you delete or scale down a node pool 
+running system pods that were previously a system node pool, those system pods are redeployed with preferred scheduling to the new system node pool.
+---------------------------------------------
+Theory
+Container insights overview:
+Container insights is a feature designed to monitor the performance of container workloads deployed to the cloud. 
+It gives you performance visibility by collecting memory and processor metrics from controllers, nodes, and containers that are available in Kubernetes 
+through the Metrics API. After you enable monitoring from Kubernetes clusters, metrics and Container logs are automatically collected for you through a containerized
+version of the Log Analytics agent for Linux. Metrics are sent to the metrics database in Azure Monitor. Log data is sent to your Log Analytics workspace.
+---------------------------------------------
+step 1:
+Verify Microsoft.OperationsManagement and Microsoft.OperationalInsights providers are registered on your subscription. 
+These are Azure resource providers required to support Container insights. To check the registration status, run the following commands:
+--> az provider show -n Microsoft.OperationsManagement -o table
+--> az provider show -n Microsoft.OperationalInsights -o table
+
+If they are not registered, register Microsoft.OperationsManagement and Microsoft.OperationalInsights using the following commands:
+--> az provider register --namespace Microsoft.OperationsManagement
+--> az provider register --namespace Microsoft.OperationalInsights
+
+step 2:
+Create a resource group
+--> az group create --name CUBEJS_TEST --location eastus
+
+Step 3:
+--> az aks create -g CUBEJS_TEST -n CUBEJS --enable-managed-identity --node-count 1 --enable-addons monitoring --enable-msi-auth-for-monitoring  --generate-ssh-keys
+
+When you create an AKS cluster, a second resource group is automatically created to store the AKS resources.
+
+Step 4:
+Install kubectl manually
+--> az aks install-cli
+
+step 5:
+Configure kubectl to connect to your Kubernetes cluster
+--> az aks get-credentials --resource-group CUBEJS_TEST --name CUBEJS
+
+Step 6:
+Verify the connection to your cluster
+--> kubectl get nodes
+
+step 7: Enable CSI storage drivers on an existing cluster
+To enable CSI storage drivers on a new cluster, include one of the following parameters depending on the storage system:
+
+--enable-disk-driver allows you to enable the Azure Disks CSI driver.
+--enable-file-driver allows you to enable the Azure Files CSI driver.
+--enable-blob-driver allows you to enable the Azure Blob storage CSI driver.
+--enable-snapshot-controller allows you to enable the snapshot controller.
+
+
+--> az aks update -n myAKSCluster -g myResourceGroup --enable-disk-driver --enable-file-driver --enable-blob-driver --enable-snapshot-controller
+--> az aks update -n CUBEJS -g CUBJS_TEST --enable-disk-driver --enable-file-driver --enable-blob-driver 
+
+----------------------
+error: while creating pvc-
+The subscription is not registered to use namespace 'Microsoft.Storage'
+solution: go to subscription and go to resource provisioner and then find for Microsoft.Storage and register.
+--------------------------
+
+Step 8: Install helm (if you have to install ingress controller then you need helm)
+--> curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+--> chmod 700 get_helm.sh
+--> ./get_helm.sh
+
+Step 9(optional): Intall ingress controller(nginx)----If you have multiple applications running on aks cluster and you want ingress controller then you can use.
+ 
+# Create a namespace for ingress resources
+--> kubectl create namespace ingress-basic
+
+# Add the Helm repository
+--> helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+--> helm repo update
+
+# Use Helm to deploy an NGINX ingress controller
+--> helm install ingress-nginx ingress-nginx/ingress-nginx \
+    --namespace ingress-basic \
+    --set controller.replicaCount=2
+
+Step 10: 
+Deploy the application:
+*** If you have ingress.yaml then follow /kube1   directory
+*** If you don't want ingress controller then follow /kube2  directory
+Apply all manifest files of application in /kube directory.
+If you have ingress controller, Try to apply all the files in same namespace where you have created ingress controller.
+
