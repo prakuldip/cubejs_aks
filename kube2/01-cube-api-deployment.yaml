@@ -36,7 +36,6 @@ spec:
               value: <DB_USER>
             - name: CUBEJS_DB_PASS
               value: <DB_PASSORD>
-              value: DataGE!RHawkEyeRDBMSDev567432
             - name: CUBEJS_DB_TYPE
               value: mysql
           image: cubejs/cube:v0.28.14
