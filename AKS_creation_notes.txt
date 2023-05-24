@@ -95,7 +95,7 @@ Step 9(optional): Intall ingress controller(nginx)----If you have multiple appli
 # Use Helm to deploy an NGINX ingress controller
 --> helm install ingress-nginx ingress-nginx/ingress-nginx \
     --namespace ingress-basic \
-    --set controller.replicaCount=2
+    --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz
 
 Step 10: 
 Deploy the application:
